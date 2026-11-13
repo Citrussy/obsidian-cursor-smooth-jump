@@ -1,0 +1,93 @@
+/* ==========================================================================
+   Cursor Jump
+   Obsidian 1.14 draws the caret with the browser's native caret, which cannot
+   be animated. This plugin hides that caret while it is active and paints its
+   own absolutely-positioned caret inside `.cm-scroller`, so its transform can
+   glide with a CSS transition on every selection change.
+   ========================================================================== */
+
+body {
+	--cj-duration: 90ms;
+	--cj-ease: cubic-bezier(.22, .61, .36, 1);
+	--cj-caret-color: var(--caret-color, #dcddde);
+}
+
+/* ---------- Native caret handling ---------- */
+
+/* Hide the native caret while our caret exists. `.cm-focused` is deliberately
+   not part of the selector: CodeMirror rewrites `.cm-editor`'s class list on
+   focus/theme updates, so fewer required classes means fewer ways to miss. */
+body.cj-on .cm-editor.cj-caret-on .cm-content,
+body.cj-on .cm-editor.cj-caret-on .cm-line {
+	caret-color: transparent !important;
+}
+
+/* IME / composition needs the native caret back. */
+body.cj-on .cm-editor.cj-caret-on.cj-composing .cm-content,
+body.cj-on .cm-editor.cj-caret-on.cj-composing .cm-line {
+	caret-color: var(--caret-color, #dcddde) !important;
+}
+
+body.cj-on .cm-editor.cj-composing .cj-caret {
+	display: none !important;
+}
+
+/* ---------- Layers ---------- */
+
+.cj-caret-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 0;
+	height: 0;
+	z-index: 21;
+	pointer-events: none;
+}
+
+/* ---------- Caret ---------- */
+
+.cj-caret {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 2px;
+	border-radius: 1px;
+	background: var(--cj-caret-color);
+	pointer-events: none;
+	animation: cj-caret-blink 1.2s steps(1) infinite;
+	transition-property: transform, height;
+	transition-duration: var(--cj-duration, 90ms);
+	transition-timing-function: var(--cj-ease, ease-out);
+	will-change: transform;
+	transform: translate3d(0, 0, 0);
+}
+
+@keyframes cj-caret-blink {
+	0%,
+	49% {
+		opacity: 1;
+	}
+	50%,
+	100% {
+		opacity: 0;
+	}
+}
+
+/* ---------- Settings page ---------- */
+
+.cj-settings-desc {
+	margin: 0 0 .8em;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	line-height: 1.5;
+}
+
+/* ---------- Accessibility ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.cj-caret {
+		transition: none !important;
+		animation: none !important;
+		opacity: 1 !important;
+	}
+}
