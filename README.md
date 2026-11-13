@@ -90,7 +90,7 @@ Requirements: Obsidian 1.4.0 or newer, desktop only (the plugin reads `document.
 
 ## Development
 
-`main.js` is a bundled CommonJS file produced by esbuild from `src/main.ts` and `src/caret.ts`. There is no build script in this repository; the bundle is committed so the plugin can be installed by dropping files into the vault. The caret logic is self-contained in `createCaretEffectExtension(getSettings)`, and all timing constants are named at the top of the caret module (`CARET_WIDTH`, `SETTLE_MS`, `STILL_EPSILON`, `RETRY_MS`, `MAX_RETRIES`, `DRAG_SLOP`).
+`main.js` is a CommonJS bundle built by esbuild from the TypeScript sources in `src/` (`src/main.ts` for the plugin and settings, `src/caret.ts` for the caret layer). The bundle is committed so the plugin can be installed by dropping files into a vault; run `npm install && npm run build` after changing the sources. Releases are built from these sources. The caret logic is self-contained in `createCaretEffectExtension(getSettings)`, and all timing constants are named at the top of the caret module (`CARET_WIDTH`, `SETTLE_MS`, `STILL_EPSILON`, `RETRY_MS`, `MAX_RETRIES`, `DRAG_SLOP`).
 
 To test changes, copy `main.js`, `manifest.json` and `styles.css` into a test vault's plugin folder and reload Obsidian.
 
@@ -155,7 +155,7 @@ duration = min(240, round(setting * clamp(0.55 + d / 260, 0.55, 1.9)))
 
 ### 开发
 
-`main.js` 是 esbuild 从 `src/main.ts` 与 `src/caret.ts` 打包出的 CommonJS 文件，仓库里直接提交打包产物，方便拷进库即用。光标逻辑集中在 `createCaretEffectExtension(getSettings)`，所有时间常量都在光标模块顶部具名声明。改动后把三个文件拷进测试库、重载 Obsidian 即可验证。
+`main.js` 由 esbuild 从 `src/` 下的 TypeScript 源码（`src/main.ts` 管插件与设置，`src/caret.ts` 管光标层）打包成 CommonJS。仓库里直接提交打包产物，方便拷进库即用；改源码后跑 `npm install && npm run build`。发布版本都从这份源码构建。光标逻辑集中在 `createCaretEffectExtension(getSettings)`，所有时间常量都在光标模块顶部具名声明。改动后把三个文件拷进测试库、重载 Obsidian 即可验证。
 
 ## License
 
