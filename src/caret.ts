@@ -1,4 +1,5 @@
 import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
+import { setCssStyles } from "obsidian";
 
 /**
  * The caret glide.
@@ -309,8 +310,7 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
       private hideCarets() {
         for (let i = 0; i < this.carets.length; i++) {
           const caret = this.carets[i];
-          caret.style.transitionDuration = "0ms";
-          caret.style.visibility = "hidden";
+          setCssStyles(caret, { transitionDuration: "0ms", visibility: "hidden" });
           const record = this.applied[i];
           if (record) {
             record.duration = 0;
@@ -424,25 +424,25 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
           }
           if (record.hidden) {
             record.hidden = false;
-            caret.style.visibility = "";
+            setCssStyles(caret, { visibility: "" });
           }
           if (record.duration !== duration) {
             record.duration = duration;
-            caret.style.transitionDuration = duration > 0 ? `${duration}ms` : "0ms";
+            setCssStyles(caret, { transitionDuration: duration > 0 ? `${duration}ms` : "0ms" });
           }
           if (record.x !== x || record.y !== y) {
             record.x = x;
             record.y = y;
-            caret.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            setCssStyles(caret, { transform: `translate3d(${x}px, ${y}px, 0)` });
           }
           if (record.height !== height) {
             record.height = height;
-            caret.style.height = `${height}px`;
+            setCssStyles(caret, { height: `${height}px` });
           }
           if (movedHere) {
             if (record.animation !== "none") {
               record.animation = "none";
-              caret.style.animationName = "none";
+              setCssStyles(caret, { animationName: "none" });
             }
             moved = true;
             travelled = Math.max(travelled, duration);
@@ -466,7 +466,7 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
             const record = this.applied[i];
             if (record && record.animation !== "blink") {
               record.animation = "blink";
-              this.carets[i].style.animationName = BLINK_ANIMATION;
+              setCssStyles(this.carets[i], { animationName: BLINK_ANIMATION });
             }
           }
         }, Math.max(0, travel) + SETTLE_MS);

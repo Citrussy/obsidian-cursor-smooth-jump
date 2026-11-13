@@ -45,7 +45,7 @@ export default class SmoothCaretPlugin extends Plugin {
     this.registerEditorExtension(createCaretEffectExtension(() => this.settings));
 
     this.addCommand({
-      id: "toggle-smooth-caret",
+      id: "toggle-caret-animation",
       name: "切换光标平滑动画",
       callback: async () => {
         this.settings.enabled = !this.settings.enabled;
@@ -56,7 +56,7 @@ export default class SmoothCaretPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: "open-cursor-jump-settings",
+      id: "open-caret-settings",
       name: "打开光标动效设置",
       callback: () => {
         const setting = (this.app as App & { setting?: { open(): void; openTabById(id: string): void } })
