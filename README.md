@@ -1,10 +1,10 @@
-# Smooth Caret
+# Cursor Smooth Jump
 
 An animated caret for the Obsidian editor. When the cursor moves, it glides to its new position instead of teleporting there, the way the caret behaves in VS Code.
 
 **[中文说明](#中文说明)**
 
-Obsidian draws the text caret with the browser's native `caret-color`, and a native caret cannot be animated. Smooth Caret hides it while the editor is focused and draws its own caret on top of the text layer, which means the caret can be moved with a CSS transition. Every selection change becomes a short, smooth animation: typing, backspace, arrow keys, clicking, jumping to a heading from the outline, running a command — all of it.
+Obsidian draws the text caret with the browser's native `caret-color`, and a native caret cannot be animated. Cursor Smooth Jump hides it while the editor is focused and draws its own caret on top of the text layer, which means the caret can be moved with a CSS transition. Every selection change becomes a short, smooth animation: typing, backspace, arrow keys, clicking, jumping to a heading from the outline, running a command — all of it.
 
 The plugin does not change how the editor behaves. It only changes how the caret arrives.
 
@@ -53,6 +53,16 @@ The caret blink is paused while it travels: the blink keyframes are removed befo
 - **Focus:** window focus, editor focus and a 300 ms safety timer all re-schedule a measurement for code paths that never emit a CodeMirror update.
 - **Reduced motion:** `prefers-reduced-motion: reduce` disables animation and blinking in both script and stylesheet.
 
+### Built for Chinese and IME input
+
+Chinese is where most caret animations fall apart: an IME holds the composing text outside the document, then commits a whole candidate in one keystroke. This plugin treats that as the normal case.
+
+- **Composition is detected, not guessed.** `compositionstart` hides the drawn caret and hands the editor back to the native one; `compositionend` restores it. While a candidate window is open you never see two carets fighting over the same character, and and committing a pinyin candidate never throws the caret out of a half-written character position.
+- **A fixed 2 px bar, not a glyph-width bar.** Full-width Chinese punctuation and half-width Latin get the same caret, so the bar does not stretch or crawl when a line mixes the two.
+- **Bursts collapse.** A candidate commit arrives as several editor updates in a row; the measurement runs once per animation frame, so a whole word lands as one glide instead of a stutter.
+- **Blink stays off while travelling.** A jump across a screenful of Chinese does not flicker on the way.
+- **Distance-aware timing.** Each character step is short (about half the configured duration), so typing Chinese at speed never queues animations behind the keystrokes.
+
 ## Settings
 
 | Setting | Default | Range | Notes |
@@ -73,10 +83,10 @@ Settings are written into CSS custom properties on `body` (`--cj-duration`, `--c
 
 ## Install
 
-**From the community list:** Settings → Community plugins → Browse → search for "Smooth Caret". If it is not listed yet, install it manually:
+**From the community list:** Settings → Community plugins → Browse → search for "Cursor Smooth Jump". If it is not listed yet, install it manually:
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/Citrussy/obsidian-smooth-caret/releases/latest).
-2. Create `<vault>/.obsidian/plugins/smooth-caret/`.
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/Citrussy/obsidian-cursor-smooth-jump/releases/latest).
+2. Create `<vault>/.obsidian/plugins/cursor-smooth-jump/`.
 3. Put the three files there and enable the plugin under Settings → Community plugins.
 
 Requirements: Obsidian 1.4.0 or newer, desktop only (the plugin reads `document.hidden` and uses the CodeMirror 6 view API; mobile is untested and not claimed).
@@ -100,7 +110,7 @@ To test changes, copy `main.js`, `manifest.json` and `styles.css` into a test va
 
 ### 为什么做这个
 
-Obsidian 的光标是浏览器的原生插入符，由合成器直接绘制，DOM 里没有节点可以改动，所以它没法做动画。Smooth Caret 在编辑器获得焦点时把原生光标藏起来，在文字层上画一个自己的光标，于是就能用 CSS transition 移动它。打字、退格、方向键、点击、从大纲跳标题、执行命令，每一次选区变化都会变成一小段平滑动画。
+Obsidian 的光标是浏览器的原生插入符，由合成器直接绘制，DOM 里没有节点可以改动，所以它没法做动画。Cursor Smooth Jump 在编辑器获得焦点时把原生光标藏起来，在文字层上画一个自己的光标，于是就能用 CSS transition 移动它。打字、退格、方向键、点击、从大纲跳标题、执行命令，每一次选区变化都会变成一小段平滑动画。
 
 插件不改变编辑器的任何行为，只改变光标「到达」的方式。
 
@@ -136,6 +146,16 @@ duration = min(240, round(setting * clamp(0.55 + d / 260, 0.55, 1.9)))
 
 **不干扰原有交互。** 输入法开始组字时恢复原生光标并停止测量；鼠标按下后位移超过 4px 判定为拖选，拖选期间过渡时长归零；窗口获得焦点、编辑器获得焦点以及 300 ms 的兜底定时器都会补一次测量，覆盖那些不触发 CodeMirror 更新的代码路径；系统要求减少动态效果时，脚本和样式表同时关闭动画与闪烁。
 
+### 对中文和输入法的处理
+
+中文是这类光标动画最容易翻车的地方：拼音还在输入法里，文档里没有字；一旦回车确认，整个词一次性落进正文。这个插件把这种情况当正常路径处理。
+
+- **认得出组字状态，不靠猜。** 输入法开始组字时隐藏自绘光标、交还原生光标，组字结束后再接管。候选窗开着的时候不会出现两个光标抢同一个字，确认拼音也不会把光标从半个字的位置甩出去。
+- **固定 2 px 竖线，不跟着字宽走。** 全角标点和半角英文得到一样的光标，一行里中英混排时竖线不会被拉宽或抖动。
+- **一串更新合成一次。** 输入法确认候选会连着触发几次编辑器更新，测量按帧合并，整个词落下来是一段滑动，不是几次抽搐。
+- **滑动途中不闪烁。** 跨屏跳一大段中文时光标不会在路上一闪一闪。
+- **按距离调速。** 单字移动只取设定时长的一半左右，中文快速输入时动画不会排在按键后面越积越多。
+
 ### 设置项
 
 | 设置 | 默认 | 范围 | 说明 |
@@ -149,7 +169,7 @@ duration = min(240, round(setting * clamp(0.55 + d / 260, 0.55, 1.9)))
 
 ### 安装
 
-社区插件市场搜索「Smooth Caret」。如果还没上架，手动安装：从 [最新 release](https://github.com/Citrussy/obsidian-smooth-caret/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，放进 `<库>/.obsidian/plugins/cursor-jump/`，然后在「设置 → 第三方插件」里启用。
+社区插件市场搜索「Cursor Smooth Jump」。如果还没上架，手动安装：从 [最新 release](https://github.com/Citrussy/obsidian-cursor-smooth-jump/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，放进 `<库>/.obsidian/plugins/cursor-jump/`，然后在「设置 → 第三方插件」里启用。
 
 需要 Obsidian 1.4.0 及以上，仅桌面端。Vim 模式下插件自动停用，不改动 Vim 的块状光标。与其他修改光标的插件冲突，只能同时开一个。
 

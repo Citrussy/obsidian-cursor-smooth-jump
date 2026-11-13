@@ -62,7 +62,7 @@ export default class SmoothCaretPlugin extends Plugin {
         const setting = (this.app as App & { setting?: { open(): void; openTabById(id: string): void } })
           .setting;
         if (!setting) {
-          new Notice("请在 设置 → 第三方插件 → Smooth Caret 中调整选项");
+          new Notice("请在 设置 → 第三方插件 → Cursor Smooth Jump 中调整选项");
           return;
         }
         setting.open();
@@ -199,7 +199,7 @@ class SmoothCaretSettingTab extends PluginSettingTab {
           this.plugin.applyLook();
           await this.plugin.saveSettings();
           this.display();
-          new Notice("Smooth Caret 已恢复默认设置");
+          new Notice("Cursor Smooth Jump 已恢复默认设置");
         }),
       );
   }
