@@ -1,6 +1,6 @@
 {
   "name": "cursor-smooth-jump",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Give the Obsidian editor caret a smooth, VS Code-style glide between positions.",
   "scripts": {
     "build": "esbuild src/main.ts --bundle --external:obsidian --external:@codemirror/* --format=cjs --platform=browser --target=es2018 --outfile=main.js",
