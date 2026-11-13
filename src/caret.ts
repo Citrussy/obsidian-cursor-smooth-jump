@@ -1,5 +1,27 @@
 import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
-import { setCssStyles } from "obsidian";
+
+/**
+ * Write inline styles on an element.
+ *
+ * `setCssStyles` is an element method in Obsidian's API, not a module export.
+ * Importing it from "obsidian" yielded `undefined`, so every call threw and each
+ * caret element stayed at 0x0 without a transform or a height: invisible, while
+ * the stylesheet had already hidden the native caret.
+ */
+function setStyles(el: HTMLElement, styles: Record<string, string>): void {
+  const helper = (el as unknown as { setCssStyles?: (styles: Record<string, string>) => void })
+    .setCssStyles;
+  if (typeof helper === "function") {
+    helper.call(el, styles);
+    return;
+  }
+  for (const [property, value] of Object.entries(styles)) {
+    el.style.setProperty(
+      property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`),
+      value,
+    );
+  }
+}
 
 /**
  * The caret glide.
@@ -101,6 +123,8 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
       private carets: HTMLDivElement[] = [];
       private applied: (AppliedCaret | null)[] = [];
       private caretOn = false;
+      /** Set once a caret element has actually received a position and a size. */
+      private painted = false;
       private animateNext = false;
       private composing = false;
       private destroyed = false;
@@ -193,7 +217,7 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
       private onEnsure = () => {
         if (this.destroyed || this.composing || this.appHidden()) return;
         if (!getSettings().enabled || !this.view.hasFocus) return;
-        if (this.carets.length > 0 && !this.missed) {
+        if (this.painted && this.carets.length > 0 && !this.missed) {
           if (!this.view.dom.classList.contains("cj-caret-on")) {
             this.view.dom.classList.add("cj-caret-on");
           }
@@ -303,20 +327,28 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
           this.blinkTimer = 0;
         }
         this.caretOn = false;
+        this.painted = false;
         this.view.dom.classList.remove("cj-caret-on");
       }
 
-      /** Off-screen caret: hide it, but keep the native caret hidden too. */
+      /**
+       * Off-screen caret: hide the drawn one and hand the native caret back.
+       * Keeping the native caret hidden here is what turned a failed paint into
+       * a completely invisible cursor.
+       */
       private hideCarets() {
         for (let i = 0; i < this.carets.length; i++) {
           const caret = this.carets[i];
-          setCssStyles(caret, { transitionDuration: "0ms", visibility: "hidden" });
+          setStyles(caret, { transitionDuration: "0ms", visibility: "hidden" });
           const record = this.applied[i];
           if (record) {
             record.duration = 0;
             record.hidden = true;
           }
         }
+        this.caretOn = false;
+        this.painted = false;
+        this.view.dom.classList.remove("cj-caret-on");
       }
 
       /** Turns the current selection into scroll-content pixel coordinates. */
@@ -424,25 +456,25 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
           }
           if (record.hidden) {
             record.hidden = false;
-            setCssStyles(caret, { visibility: "" });
+            setStyles(caret, { visibility: "" });
           }
           if (record.duration !== duration) {
             record.duration = duration;
-            setCssStyles(caret, { transitionDuration: duration > 0 ? `${duration}ms` : "0ms" });
+            setStyles(caret, { transitionDuration: duration > 0 ? `${duration}ms` : "0ms" });
           }
           if (record.x !== x || record.y !== y) {
             record.x = x;
             record.y = y;
-            setCssStyles(caret, { transform: `translate3d(${x}px, ${y}px, 0)` });
+            setStyles(caret, { transform: `translate3d(${x}px, ${y}px, 0)` });
           }
           if (record.height !== height) {
             record.height = height;
-            setCssStyles(caret, { height: `${height}px` });
+            setStyles(caret, { height: `${height}px` });
           }
           if (movedHere) {
             if (record.animation !== "none") {
               record.animation = "none";
-              setCssStyles(caret, { animationName: "none" });
+              setStyles(caret, { animationName: "none" });
             }
             moved = true;
             travelled = Math.max(travelled, duration);
@@ -452,6 +484,7 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
         this.carets.length = targets.length;
         this.applied.length = targets.length;
         this.caretOn = true;
+        this.painted = true;
         this.view.dom.classList.add("cj-caret-on");
         this.missed = false;
         if (moved) this.scheduleBlink(travelled);
@@ -466,7 +499,7 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
             const record = this.applied[i];
             if (record && record.animation !== "blink") {
               record.animation = "blink";
-              setCssStyles(this.carets[i], { animationName: BLINK_ANIMATION });
+              setStyles(this.carets[i], { animationName: BLINK_ANIMATION });
             }
           }
         }, Math.max(0, travel) + SETTLE_MS);

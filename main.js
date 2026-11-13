@@ -22,11 +22,23 @@ __export(main_exports, {
   default: () => SmoothCaretPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian2 = require("obsidian");
+var import_obsidian = require("obsidian");
 
 // src/caret.ts
 var import_view = require("@codemirror/view");
-var import_obsidian = require("obsidian");
+function setStyles(el, styles) {
+  const helper = el.setCssStyles;
+  if (typeof helper === "function") {
+    helper.call(el, styles);
+    return;
+  }
+  for (const [property, value] of Object.entries(styles)) {
+    el.style.setProperty(
+      property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`),
+      value
+    );
+  }
+}
 var CARET_WIDTH = 2;
 var REFRESH_EVENT = "cursor-jump:refresh";
 var BLINK_ANIMATION = "cj-caret-blink";
@@ -70,6 +82,8 @@ function createCaretEffectExtension(getSettings) {
         this.carets = [];
         this.applied = [];
         this.caretOn = false;
+        /** Set once a caret element has actually received a position and a size. */
+        this.painted = false;
         this.animateNext = false;
         this.composing = false;
         this.destroyed = false;
@@ -144,7 +158,7 @@ function createCaretEffectExtension(getSettings) {
         this.onEnsure = () => {
           if (this.destroyed || this.composing || this.appHidden()) return;
           if (!getSettings().enabled || !this.view.hasFocus) return;
-          if (this.carets.length > 0 && !this.missed) {
+          if (this.painted && this.carets.length > 0 && !this.missed) {
             if (!this.view.dom.classList.contains("cj-caret-on")) {
               this.view.dom.classList.add("cj-caret-on");
             }
@@ -240,19 +254,27 @@ function createCaretEffectExtension(getSettings) {
           this.blinkTimer = 0;
         }
         this.caretOn = false;
+        this.painted = false;
         this.view.dom.classList.remove("cj-caret-on");
       }
-      /** Off-screen caret: hide it, but keep the native caret hidden too. */
+      /**
+       * Off-screen caret: hide the drawn one and hand the native caret back.
+       * Keeping the native caret hidden here is what turned a failed paint into
+       * a completely invisible cursor.
+       */
       hideCarets() {
         for (let i = 0; i < this.carets.length; i++) {
           const caret = this.carets[i];
-          (0, import_obsidian.setCssStyles)(caret, { transitionDuration: "0ms", visibility: "hidden" });
+          setStyles(caret, { transitionDuration: "0ms", visibility: "hidden" });
           const record = this.applied[i];
           if (record) {
             record.duration = 0;
             record.hidden = true;
           }
         }
+        this.caretOn = false;
+        this.painted = false;
+        this.view.dom.classList.remove("cj-caret-on");
       }
       /** Turns the current selection into scroll-content pixel coordinates. */
       measureRead() {
@@ -351,25 +373,25 @@ function createCaretEffectExtension(getSettings) {
           }
           if (record.hidden) {
             record.hidden = false;
-            (0, import_obsidian.setCssStyles)(caret, { visibility: "" });
+            setStyles(caret, { visibility: "" });
           }
           if (record.duration !== duration) {
             record.duration = duration;
-            (0, import_obsidian.setCssStyles)(caret, { transitionDuration: duration > 0 ? `${duration}ms` : "0ms" });
+            setStyles(caret, { transitionDuration: duration > 0 ? `${duration}ms` : "0ms" });
           }
           if (record.x !== x || record.y !== y) {
             record.x = x;
             record.y = y;
-            (0, import_obsidian.setCssStyles)(caret, { transform: `translate3d(${x}px, ${y}px, 0)` });
+            setStyles(caret, { transform: `translate3d(${x}px, ${y}px, 0)` });
           }
           if (record.height !== height) {
             record.height = height;
-            (0, import_obsidian.setCssStyles)(caret, { height: `${height}px` });
+            setStyles(caret, { height: `${height}px` });
           }
           if (movedHere) {
             if (record.animation !== "none") {
               record.animation = "none";
-              (0, import_obsidian.setCssStyles)(caret, { animationName: "none" });
+              setStyles(caret, { animationName: "none" });
             }
             moved = true;
             travelled = Math.max(travelled, duration);
@@ -379,6 +401,7 @@ function createCaretEffectExtension(getSettings) {
         this.carets.length = targets.length;
         this.applied.length = targets.length;
         this.caretOn = true;
+        this.painted = true;
         this.view.dom.classList.add("cj-caret-on");
         this.missed = false;
         if (moved) this.scheduleBlink(travelled);
@@ -392,7 +415,7 @@ function createCaretEffectExtension(getSettings) {
             const record = this.applied[i];
             if (record && record.animation !== "blink") {
               record.animation = "blink";
-              (0, import_obsidian.setCssStyles)(this.carets[i], { animationName: BLINK_ANIMATION });
+              setStyles(this.carets[i], { animationName: BLINK_ANIMATION });
             }
           }
         }, Math.max(0, travel) + SETTLE_MS);
@@ -435,7 +458,7 @@ var LEGACY_KEYS = ["fixFlatCaret", "mode", "ripple", "rippleSize", "minDistance"
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
-var SmoothCaretPlugin = class extends import_obsidian2.Plugin {
+var SmoothCaretPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
     this.settings = { ...DEFAULT_SETTINGS };
@@ -452,7 +475,7 @@ var SmoothCaretPlugin = class extends import_obsidian2.Plugin {
         this.settings.enabled = !this.settings.enabled;
         this.applyLook();
         await this.saveSettings();
-        new import_obsidian2.Notice(this.settings.enabled ? "\u5149\u6807\u5E73\u6ED1\u52A8\u753B\uFF1A\u91CD\u65B0\u5F00\u542F" : "\u5149\u6807\u5E73\u6ED1\u52A8\u753B\uFF1A\u6682\u65F6\u5173\u95ED");
+        new import_obsidian.Notice(this.settings.enabled ? "\u5149\u6807\u5E73\u6ED1\u52A8\u753B\uFF1A\u91CD\u65B0\u5F00\u542F" : "\u5149\u6807\u5E73\u6ED1\u52A8\u753B\uFF1A\u6682\u65F6\u5173\u95ED");
       }
     });
     this.addCommand({
@@ -461,7 +484,7 @@ var SmoothCaretPlugin = class extends import_obsidian2.Plugin {
       callback: () => {
         const setting = this.app.setting;
         if (!setting) {
-          new import_obsidian2.Notice("\u8BF7\u5728 \u8BBE\u7F6E \u2192 \u7B2C\u4E09\u65B9\u63D2\u4EF6 \u2192 Cursor Smooth Jump \u4E2D\u8C03\u6574\u9009\u9879");
+          new import_obsidian.Notice("\u8BF7\u5728 \u8BBE\u7F6E \u2192 \u7B2C\u4E09\u65B9\u63D2\u4EF6 \u2192 Cursor Smooth Jump \u4E2D\u8C03\u6574\u9009\u9879");
           return;
         }
         setting.open();
@@ -501,7 +524,7 @@ var SmoothCaretPlugin = class extends import_obsidian2.Plugin {
     body.style.removeProperty("--cj-ease");
   }
 };
-var SmoothCaretSettingTab = class extends import_obsidian2.PluginSettingTab {
+var SmoothCaretSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -519,15 +542,15 @@ var SmoothCaretSettingTab = class extends import_obsidian2.PluginSettingTab {
       text: "\u8BA9\u7F16\u8F91\u5668\u7684\u5149\u6807\u50CF VSCode \u90A3\u6837\u6ED1\u8FC7\u53BB\uFF0C\u800C\u4E0D\u662F\u77AC\u95F4\u8DF3\u8FC7\u53BB\u3002\u6253\u5B57\u3001\u9000\u683C\u3001\u63D2\u4EF6\u6E05\u884C\u3001\u70B9\u51FB\u3001\u65B9\u5411\u952E\u3001\u547D\u4EE4\u8DF3\u8F6C\u90FD\u4F1A\u6ED1\uFF1B\u9F20\u6807\u62D6\u9009\u65F6\u5149\u6807\u8DDF\u7740\u9F20\u6807\u8D70\uFF0C\u4E0D\u62D6\u5F71\u3002",
       cls: "cj-settings-desc"
     });
-    new import_obsidian2.Setting(containerEl).setName("\u5149\u6807\u6ED1\u52A8").setHeading();
-    new import_obsidian2.Setting(containerEl).setName("\u542F\u7528\u52A8\u6548").setDesc("\u603B\u5F00\u5173\u3002\u5173\u95ED\u540E\u5149\u6807\u7ACB\u523B\u51FA\u73B0\u5728\u65B0\u4F4D\u7F6E\u3002").addToggle(
+    new import_obsidian.Setting(containerEl).setName("\u5149\u6807\u6ED1\u52A8").setHeading();
+    new import_obsidian.Setting(containerEl).setName("\u542F\u7528\u52A8\u6548").setDesc("\u603B\u5F00\u5173\u3002\u5173\u95ED\u540E\u5149\u6807\u7ACB\u523B\u51FA\u73B0\u5728\u65B0\u4F4D\u7F6E\u3002").addToggle(
       (toggle) => toggle.setValue(this.plugin.settings.enabled).onChange(
         (value) => this.changed((settings) => {
           settings.enabled = value;
         })
       )
     );
-    new import_obsidian2.Setting(containerEl).setName("\u6ED1\u52A8\u65F6\u957F").setDesc(
+    new import_obsidian.Setting(containerEl).setName("\u6ED1\u52A8\u65F6\u957F").setDesc(
       "\u5355\u4F4D\u6BEB\u79D2\uFF0C\u662F\u300C\u8DE8\u5C4F\u8DF3\u8F6C\u300D\u7684\u57FA\u51C6\u65F6\u957F\uFF1B\u77ED\u8DDD\u79BB\uFF08\u6253\u5B57\u3001\u9000\u683C\uFF09\u4F1A\u81EA\u52A8\u538B\u7F29\u5230\u516D\u6210\u5DE6\u53F3\u300280\u2013120 \u4E4B\u95F4\u6BD4\u8F83\u81EA\u7136\uFF1B0 \u7B49\u4E8E\u5173\u95ED\u6ED1\u52A8\u3002"
     ).addSlider(
       (slider) => slider.setLimits(0, 300, 10).setValue(this.plugin.settings.duration).setDynamicTooltip().onChange(
@@ -536,7 +559,7 @@ var SmoothCaretSettingTab = class extends import_obsidian2.PluginSettingTab {
         })
       )
     );
-    new import_obsidian2.Setting(containerEl).setName("\u7F13\u52A8\u66F2\u7EBF").setDesc("\u51B3\u5B9A\u5149\u6807\u662F\u5300\u901F\u3001\u6E10\u6162\u8FD8\u662F\u5E26\u4E00\u70B9\u56DE\u5F39\u3002").addDropdown((dropdown) => {
+    new import_obsidian.Setting(containerEl).setName("\u7F13\u52A8\u66F2\u7EBF").setDesc("\u51B3\u5B9A\u5149\u6807\u662F\u5300\u901F\u3001\u6E10\u6162\u8FD8\u662F\u5E26\u4E00\u70B9\u56DE\u5F39\u3002").addDropdown((dropdown) => {
       Object.keys(EASINGS).forEach((key) => {
         dropdown.addOption(key, EASING_LABELS[key]);
       });
@@ -546,20 +569,20 @@ var SmoothCaretSettingTab = class extends import_obsidian2.PluginSettingTab {
         })
       );
     });
-    new import_obsidian2.Setting(containerEl).setName("\u5149\u6807\u9AD8\u5EA6").setDesc("\u7D27\u51D1\uFF1A1.15em\uFF0C\u8D34\u5408\u6587\u5B57\uFF1B\u6574\u884C\uFF1A\u4E0E Obsidian \u539F\u751F\u5149\u6807\u4E00\u6837\u9AD8\u3002").addDropdown(
+    new import_obsidian.Setting(containerEl).setName("\u5149\u6807\u9AD8\u5EA6").setDesc("\u7D27\u51D1\uFF1A1.15em\uFF0C\u8D34\u5408\u6587\u5B57\uFF1B\u6574\u884C\uFF1A\u4E0E Obsidian \u539F\u751F\u5149\u6807\u4E00\u6837\u9AD8\u3002").addDropdown(
       (dropdown) => dropdown.addOption("compact", "\u7D27\u51D1\uFF08\u63A8\u8350\uFF09").addOption("line", "\u6574\u884C").setValue(this.plugin.settings.caretStyle).onChange(
         (value) => this.changed((settings) => {
           settings.caretStyle = value === "line" ? "line" : "compact";
         })
       )
     );
-    new import_obsidian2.Setting(containerEl).setName("\u6062\u590D\u9ED8\u8BA4\u8BBE\u7F6E").setDesc("\u628A\u4E0A\u9762\u7684\u9009\u9879\u5168\u90E8\u91CD\u7F6E\u4E3A\u672C\u63D2\u4EF6\u63A8\u8350\u503C\u3002").addButton(
+    new import_obsidian.Setting(containerEl).setName("\u6062\u590D\u9ED8\u8BA4\u8BBE\u7F6E").setDesc("\u628A\u4E0A\u9762\u7684\u9009\u9879\u5168\u90E8\u91CD\u7F6E\u4E3A\u672C\u63D2\u4EF6\u63A8\u8350\u503C\u3002").addButton(
       (button) => button.setButtonText("\u6062\u590D\u9ED8\u8BA4").onClick(async () => {
         this.plugin.settings = { ...DEFAULT_SETTINGS };
         this.plugin.applyLook();
         await this.plugin.saveSettings();
         this.display();
-        new import_obsidian2.Notice("Cursor Smooth Jump \u5DF2\u6062\u590D\u9ED8\u8BA4\u8BBE\u7F6E");
+        new import_obsidian.Notice("Cursor Smooth Jump \u5DF2\u6062\u590D\u9ED8\u8BA4\u8BBE\u7F6E");
       })
     );
   }

@@ -1,2 +1,6 @@
 node_modules/
 main.js.map
+
+test/
+package-lock.json
+node_modules/
