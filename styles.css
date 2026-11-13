@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Cursor Jump
+   Smooth Caret
    Obsidian 1.14 draws the caret with the browser's native caret, which cannot
    be animated. This plugin hides that caret while it is active and paints its
    own absolutely-positioned caret inside `.cm-scroller`, so its transform can

@@ -1,10 +1,10 @@
-# Cursor Jump
+# Smooth Caret
 
 An animated caret for the Obsidian editor. When the cursor moves, it glides to its new position instead of teleporting there, the way the caret behaves in VS Code.
 
 **[中文说明](#中文说明)**
 
-Obsidian draws the text caret with the browser's native `caret-color`, and a native caret cannot be animated. Cursor Jump hides it while the editor is focused and draws its own caret on top of the text layer, which means the caret can be moved with a CSS transition. Every selection change becomes a short, smooth animation: typing, backspace, arrow keys, clicking, jumping to a heading from the outline, running a command — all of it.
+Obsidian draws the text caret with the browser's native `caret-color`, and a native caret cannot be animated. Smooth Caret hides it while the editor is focused and draws its own caret on top of the text layer, which means the caret can be moved with a CSS transition. Every selection change becomes a short, smooth animation: typing, backspace, arrow keys, clicking, jumping to a heading from the outline, running a command — all of it.
 
 The plugin does not change how the editor behaves. It only changes how the caret arrives.
 
@@ -73,10 +73,10 @@ Settings are written into CSS custom properties on `body` (`--cj-duration`, `--c
 
 ## Install
 
-**From the community list:** Settings → Community plugins → Browse → search for "Cursor Jump". If it is not listed yet, install it manually:
+**From the community list:** Settings → Community plugins → Browse → search for "Smooth Caret". If it is not listed yet, install it manually:
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/Citrussy/obsidian-cursor-jump/releases/latest).
-2. Create `<vault>/.obsidian/plugins/cursor-jump/`.
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/Citrussy/obsidian-smooth-caret/releases/latest).
+2. Create `<vault>/.obsidian/plugins/smooth-caret/`.
 3. Put the three files there and enable the plugin under Settings → Community plugins.
 
 Requirements: Obsidian 1.4.0 or newer, desktop only (the plugin reads `document.hidden` and uses the CodeMirror 6 view API; mobile is untested and not claimed).
@@ -100,7 +100,7 @@ To test changes, copy `main.js`, `manifest.json` and `styles.css` into a test va
 
 ### 为什么做这个
 
-Obsidian 的光标是浏览器的原生插入符，由合成器直接绘制，DOM 里没有节点可以改动，所以它没法做动画。Cursor Jump 在编辑器获得焦点时把原生光标藏起来，在文字层上画一个自己的光标，于是就能用 CSS transition 移动它。打字、退格、方向键、点击、从大纲跳标题、执行命令，每一次选区变化都会变成一小段平滑动画。
+Obsidian 的光标是浏览器的原生插入符，由合成器直接绘制，DOM 里没有节点可以改动，所以它没法做动画。Smooth Caret 在编辑器获得焦点时把原生光标藏起来，在文字层上画一个自己的光标，于是就能用 CSS transition 移动它。打字、退格、方向键、点击、从大纲跳标题、执行命令，每一次选区变化都会变成一小段平滑动画。
 
 插件不改变编辑器的任何行为，只改变光标「到达」的方式。
 
@@ -149,7 +149,7 @@ duration = min(240, round(setting * clamp(0.55 + d / 260, 0.55, 1.9)))
 
 ### 安装
 
-社区插件市场搜索「Cursor Jump」。如果还没上架，手动安装：从 [最新 release](https://github.com/Citrussy/obsidian-cursor-jump/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，放进 `<库>/.obsidian/plugins/cursor-jump/`，然后在「设置 → 第三方插件」里启用。
+社区插件市场搜索「Smooth Caret」。如果还没上架，手动安装：从 [最新 release](https://github.com/Citrussy/obsidian-smooth-caret/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，放进 `<库>/.obsidian/plugins/cursor-jump/`，然后在「设置 → 第三方插件」里启用。
 
 需要 Obsidian 1.4.0 及以上，仅桌面端。Vim 模式下插件自动停用，不改动 Vim 的块状光标。与其他修改光标的插件冲突，只能同时开一个。
 

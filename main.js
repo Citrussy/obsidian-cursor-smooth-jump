@@ -466,7 +466,7 @@ var CursorJumpPlugin = class extends import_obsidian.Plugin {
       callback: () => {
         const setting = this.app.setting;
         if (!setting) {
-          new import_obsidian.Notice("\u8BF7\u5728 \u8BBE\u7F6E \u2192 \u7B2C\u4E09\u65B9\u63D2\u4EF6 \u2192 Cursor Jump \u4E2D\u8C03\u6574\u9009\u9879");
+          new import_obsidian.Notice("\u8BF7\u5728 \u8BBE\u7F6E \u2192 \u7B2C\u4E09\u65B9\u63D2\u4EF6 \u2192 Smooth Caret \u4E2D\u8C03\u6574\u9009\u9879");
           return;
         }
         setting.open();
@@ -565,7 +565,7 @@ var CursorJumpSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.applyLook();
         await this.plugin.saveSettings();
         this.display();
-        new import_obsidian.Notice("Cursor Jump \u5DF2\u6062\u590D\u9ED8\u8BA4\u8BBE\u7F6E");
+        new import_obsidian.Notice("Smooth Caret \u5DF2\u6062\u590D\u9ED8\u8BA4\u8BBE\u7F6E");
       })
     );
   }
