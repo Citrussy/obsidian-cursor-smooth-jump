@@ -51,6 +51,8 @@ export interface CaretSettings {
   enabled: boolean;
   duration: number;
   caretStyle: "compact" | "line";
+  /** Resolved CSS timing function; pushed down to each editor root. */
+  ease?: string;
 }
 
 interface Target {
@@ -171,10 +173,31 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
        */
       private onEditorClassMutation = () => {
         if (this.destroyed || !this.caretOn) return;
-        if (!this.view.dom.classList.contains("cj-caret-on")) {
-          this.view.dom.classList.add("cj-caret-on");
-        }
+        this.markEditor(true);
       };
+
+      /**
+       * Mark the editor root as well as the window body. Popout windows have
+       * their own document, so the body class set by the plugin never reaches
+       * them; without this they kept the native caret *and* the drawn one.
+       */
+      private markEditor(on: boolean) {
+        this.view.dom.classList.toggle("cj-caret-on", on);
+        this.view.dom.classList.toggle("cj-on", on);
+      }
+
+      /** Duration/easing live on the editor root, so popouts animate too. */
+      private applyScopedLook() {
+        const style = this.view.dom.style;
+        const duration = `${clampDuration(getSettings().duration)}ms`;
+        if (style.getPropertyValue("--cj-duration") !== duration) {
+          style.setProperty("--cj-duration", duration);
+        }
+        const ease = getSettings().ease || "ease-out";
+        if (style.getPropertyValue("--cj-ease") !== ease) {
+          style.setProperty("--cj-ease", ease);
+        }
+      }
 
       private onFocusIn = () => {
         this.retryCount = 0;
@@ -218,8 +241,11 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
         if (this.destroyed || this.composing || this.appHidden()) return;
         if (!getSettings().enabled || !this.view.hasFocus) return;
         if (this.painted && this.carets.length > 0 && !this.missed) {
-          if (!this.view.dom.classList.contains("cj-caret-on")) {
-            this.view.dom.classList.add("cj-caret-on");
+          if (
+            !this.view.dom.classList.contains("cj-caret-on") ||
+            !this.view.dom.classList.contains("cj-on")
+          ) {
+            this.markEditor(true);
           }
           return;
         }
@@ -328,7 +354,7 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
         }
         this.caretOn = false;
         this.painted = false;
-        this.view.dom.classList.remove("cj-caret-on");
+        this.markEditor(false);
       }
 
       /**
@@ -348,7 +374,7 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
         }
         this.caretOn = false;
         this.painted = false;
-        this.view.dom.classList.remove("cj-caret-on");
+        this.markEditor(false);
       }
 
       /** Turns the current selection into scroll-content pixel coordinates. */
@@ -485,8 +511,10 @@ export function createCaretEffectExtension(getSettings: () => CaretSettings) {
         this.applied.length = targets.length;
         this.caretOn = true;
         this.painted = true;
-        this.view.dom.classList.add("cj-caret-on");
+        this.markEditor(true);
+        this.applyScopedLook();
         this.missed = false;
+        this.retryCount = 0;
         if (moved) this.scheduleBlink(travelled);
       }
 

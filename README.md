@@ -14,6 +14,7 @@ The plugin does not change how the editor behaves. It only changes how the caret
 - **Typing still feels instant.** Single-character moves compress the animation down to a fraction of the setting, so the caret never lags behind your typing.
 - **It does not fight the IME.** While a composition is open, the native caret comes back and the drawn one hides. Chinese and Japanese input behave exactly as before.
 - **Dragging does not smear.** If you click and drag to select, the caret tracks the pointer instead of animating behind it.
+- **One caret while selecting.** Obsidian paints its own caret at the head of a non-empty selection. That one is switched off while the plugin's caret is on, so a drag shows a single caret instead of a thick one with a thin one next to it.
 - **Every caret moves.** Multiple cursors each get their own animated caret, with the primary one drawn with the normal selection color.
 - **It stays portable.** No dependencies beyond Obsidian's own API and `@codemirror/view`, no network, no changes to your notes. Turn it off in one toggle, or run the toggle command from the command palette.
 - **It respects accessibility.** If the system asks for reduced motion, animations are turned off and the caret is simply placed at its new position.
@@ -27,6 +28,17 @@ A browser caret is painted by the compositor, not by the DOM. There is no node t
 ### A caret of our own
 
 Inside `.cm-scroller` the plugin appends a zero-size layer `.cj-caret-layer`, and inside it one 2px `div` per selection range. Those divs are positioned with `translate3d` and animated with `transition: transform, height`. Because the layer is a child of the scrolling element, the caret scrolls with the text for free.
+
+### Obsidian's own caret at a selection edge
+
+Obsidian turns on CodeMirror's `drawSelection` extension, and that extension's cursor layer paints a 1.2px `.cm-cursor` at the head of every non-empty selection. Hiding the native caret does not touch this one: it is a DOM node, not a browser caret, so `caret-color: transparent` has no effect on it. Left alone, a drag shows the plugin's 2px caret and Obsidian's 1.2px caret side by side. The plugin hides it while its own caret is painted:
+
+```css
+body.cj-on .cm-editor.cj-caret-on .cm-cursor,
+.cm-editor.cj-on.cj-caret-on .cm-cursor { display: none !important; }
+```
+
+The rule is keyed to the drawn caret, not to the pointer, so keyboard selections are covered too, and turning the effect off or opening an IME composition brings Obsidian's caret straight back.
 
 ### Measure, then write
 
@@ -120,6 +132,7 @@ Obsidian 的光标是浏览器的原生插入符，由合成器直接绘制，DO
 - **打字不拖沓**：单字移动会把动画压到设定值的一小部分，光标不会落在输入后面。
 - **不和输入法抢**：输入法组字期间恢复原生光标、隐藏自绘光标，中文和日文输入与平时一样。
 - **拖选不糊**：按住鼠标拖选时，光标跟着指针走，不做动画。
+- **选中时只剩一个光标**：Obsidian 在非空选区的头位也会画一条自己的光标；插件光标在时把它关掉，拖选看到的就是一条 2px 竖线，不会粗的那条旁边再挂一条细的。
 - **多光标一起动**：每个选区各有一个光标，主光标用正常颜色，其余暗淡。
 - **不绑架你的仓库**：除 Obsidian API 和 `@codemirror/view` 外没有依赖，不联网，不碰笔记。一个开关就能关掉，命令面板里也有切换命令。
 - **尊重无障碍设置**：系统开启「减少动态效果」时不做动画，直接把光标放到新位置。
@@ -129,6 +142,15 @@ Obsidian 的光标是浏览器的原生插入符，由合成器直接绘制，DO
 **原生光标必须让位。** 浏览器光标不属于 DOM，没有节点可以变换。插件给聚焦编辑器的文本行设 `caret-color: transparent`，并给编辑器加 `cj-caret-on` 类。CodeMirror 在焦点变化、切换主题、重绘时会整个重写 `.cm-editor` 的 class，这个标记会被悄悄抹掉，所以插件用 `MutationObserver` 盯着，掉了就补回去。
 
 **自己画一个。** 在 `.cm-scroller` 里插入零尺寸的 `.cj-caret-layer`，每个选区放一个 2px 的 `div`，用 `translate3d` 定位，用 `transition: transform, height` 做过渡。因为这一层是滚动元素的子节点，滚动时自动跟着文字走。
+
+**Obsidian 自带的那条选区光标要让开。** Obsidian 启用了 CodeMirror 的 `drawSelection`，它的光标层会在每个非空选区的头位画一条 1.2px 的 `.cm-cursor`。藏原生插入符管不到它——它是 DOM 节点，`caret-color: transparent` 对它无效。不管的话，拖选时插件那条 2px 和 Obsidian 那条 1.2px 会并排出现。插件在自绘光标存在时把它隐藏：
+
+```css
+body.cj-on .cm-editor.cj-caret-on .cm-cursor,
+.cm-editor.cj-on.cj-caret-on .cm-cursor { display: none !important; }
+```
+
+规则挂在自绘光标的状态上，不看鼠标，所以键盘选中的情形同样生效；关掉效果或进入输入法组字，Obsidian 自己的光标立刻回来。
 
 **先量后写。** CodeMirror 的 `view.coordsAtPos()` 给出文档位置在屏幕上的矩形。插件在 `view.requestMeasure()` 的读阶段取这个矩形，换算成相对光标层的坐标，再在写阶段应用 transform。读写阶段分开，避免布局抖动：几何一次读完，样式一次写完。
 

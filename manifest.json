@@ -1,7 +1,7 @@
 {
   "id": "cursor-smooth-jump",
   "name": "Cursor Smooth Jump",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "minAppVersion": "1.4.0",
   "description": "Give the editor caret a smooth, VS Code-style glide between positions.",
   "author": "Citrussy",

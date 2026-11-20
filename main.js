@@ -121,9 +121,7 @@ function createCaretEffectExtension(getSettings) {
          */
         this.onEditorClassMutation = () => {
           if (this.destroyed || !this.caretOn) return;
-          if (!this.view.dom.classList.contains("cj-caret-on")) {
-            this.view.dom.classList.add("cj-caret-on");
-          }
+          this.markEditor(true);
         };
         this.onFocusIn = () => {
           this.retryCount = 0;
@@ -159,8 +157,8 @@ function createCaretEffectExtension(getSettings) {
           if (this.destroyed || this.composing || this.appHidden()) return;
           if (!getSettings().enabled || !this.view.hasFocus) return;
           if (this.painted && this.carets.length > 0 && !this.missed) {
-            if (!this.view.dom.classList.contains("cj-caret-on")) {
-              this.view.dom.classList.add("cj-caret-on");
+            if (!this.view.dom.classList.contains("cj-caret-on") || !this.view.dom.classList.contains("cj-on")) {
+              this.markEditor(true);
             }
             return;
           }
@@ -186,6 +184,27 @@ function createCaretEffectExtension(getSettings) {
           write: (scan) => this.measureWrite(scan)
         };
         this.schedule(false);
+      }
+      /**
+       * Mark the editor root as well as the window body. Popout windows have
+       * their own document, so the body class set by the plugin never reaches
+       * them; without this they kept the native caret *and* the drawn one.
+       */
+      markEditor(on) {
+        this.view.dom.classList.toggle("cj-caret-on", on);
+        this.view.dom.classList.toggle("cj-on", on);
+      }
+      /** Duration/easing live on the editor root, so popouts animate too. */
+      applyScopedLook() {
+        const style = this.view.dom.style;
+        const duration = `${clampDuration(getSettings().duration)}ms`;
+        if (style.getPropertyValue("--cj-duration") !== duration) {
+          style.setProperty("--cj-duration", duration);
+        }
+        const ease = getSettings().ease || "ease-out";
+        if (style.getPropertyValue("--cj-ease") !== ease) {
+          style.setProperty("--cj-ease", ease);
+        }
       }
       update(update) {
         if (this.destroyed) return;
@@ -255,7 +274,7 @@ function createCaretEffectExtension(getSettings) {
         }
         this.caretOn = false;
         this.painted = false;
-        this.view.dom.classList.remove("cj-caret-on");
+        this.markEditor(false);
       }
       /**
        * Off-screen caret: hide the drawn one and hand the native caret back.
@@ -274,7 +293,7 @@ function createCaretEffectExtension(getSettings) {
         }
         this.caretOn = false;
         this.painted = false;
-        this.view.dom.classList.remove("cj-caret-on");
+        this.markEditor(false);
       }
       /** Turns the current selection into scroll-content pixel coordinates. */
       measureRead() {
@@ -402,8 +421,10 @@ function createCaretEffectExtension(getSettings) {
         this.applied.length = targets.length;
         this.caretOn = true;
         this.painted = true;
-        this.view.dom.classList.add("cj-caret-on");
+        this.markEditor(true);
+        this.applyScopedLook();
         this.missed = false;
+        this.retryCount = 0;
         if (moved) this.scheduleBlink(travelled);
       }
       /** Keep the drawn caret blinking, but only once the glide has landed. */
@@ -458,6 +479,9 @@ var LEGACY_KEYS = ["fixFlatCaret", "mode", "ripple", "rippleSize", "minDistance"
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
+function hasOwn(record, key) {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
 var SmoothCaretPlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
@@ -467,7 +491,15 @@ var SmoothCaretPlugin = class extends import_obsidian.Plugin {
     await this.loadSettings();
     this.applyLook();
     this.addSettingTab(new SmoothCaretSettingTab(this.app, this));
-    this.registerEditorExtension(createCaretEffectExtension(() => this.settings));
+    this.registerEditorExtension(
+      createCaretEffectExtension(() => {
+        var _a;
+        return {
+          ...this.settings,
+          ease: (_a = EASINGS[this.settings.easing]) != null ? _a : EASINGS.smooth
+        };
+      })
+    );
     this.addCommand({
       id: "toggle-caret-animation",
       name: "\u5207\u6362\u5149\u6807\u5E73\u6ED1\u52A8\u753B",
@@ -499,7 +531,7 @@ var SmoothCaretPlugin = class extends import_obsidian.Plugin {
     const stored = await this.loadData();
     const merged = { ...DEFAULT_SETTINGS, ...stored != null ? stored : {} };
     merged.duration = clamp(Number(merged.duration) || 0, 0, 400);
-    if (!(String(merged.easing) in EASINGS)) merged.easing = DEFAULT_SETTINGS.easing;
+    if (!hasOwn(EASINGS, String(merged.easing))) merged.easing = DEFAULT_SETTINGS.easing;
     if (merged.caretStyle !== "line") merged.caretStyle = "compact";
     for (const key of LEGACY_KEYS) delete merged[key];
     this.settings = merged;
@@ -565,7 +597,7 @@ var SmoothCaretSettingTab = class extends import_obsidian.PluginSettingTab {
       });
       dropdown.setValue(this.plugin.settings.easing).onChange(
         (value) => this.changed((settings) => {
-          settings.easing = value in EASINGS ? value : "smooth";
+          settings.easing = hasOwn(EASINGS, value) ? value : "smooth";
         })
       );
     });

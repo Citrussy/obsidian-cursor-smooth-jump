@@ -35,6 +35,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+/** Own-property check: "constructor" or "__proto__" must not pass as easing names. */
+function hasOwn(record: Record<string, string>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
 export default class SmoothCaretPlugin extends Plugin {
   settings: SmoothCaretSettings = { ...DEFAULT_SETTINGS };
 
@@ -42,7 +47,12 @@ export default class SmoothCaretPlugin extends Plugin {
     await this.loadSettings();
     this.applyLook();
     this.addSettingTab(new SmoothCaretSettingTab(this.app, this));
-    this.registerEditorExtension(createCaretEffectExtension(() => this.settings));
+    this.registerEditorExtension(
+      createCaretEffectExtension(() => ({
+        ...this.settings,
+        ease: EASINGS[this.settings.easing] ?? EASINGS.smooth,
+      })),
+    );
 
     this.addCommand({
       id: "toggle-caret-animation",
@@ -79,7 +89,7 @@ export default class SmoothCaretPlugin extends Plugin {
     const stored = (await this.loadData()) as Partial<SmoothCaretSettings> | null;
     const merged: Record<string, unknown> = { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
     merged.duration = clamp(Number(merged.duration) || 0, 0, 400);
-    if (!(String(merged.easing) in EASINGS)) merged.easing = DEFAULT_SETTINGS.easing;
+    if (!hasOwn(EASINGS, String(merged.easing))) merged.easing = DEFAULT_SETTINGS.easing;
     if (merged.caretStyle !== "line") merged.caretStyle = "compact";
     for (const key of LEGACY_KEYS) delete merged[key];
     this.settings = merged as unknown as SmoothCaretSettings;
@@ -170,7 +180,7 @@ class SmoothCaretSettingTab extends PluginSettingTab {
         });
         dropdown.setValue(this.plugin.settings.easing).onChange((value) =>
           this.changed((settings) => {
-            settings.easing = value in EASINGS ? value : "smooth";
+            settings.easing = hasOwn(EASINGS, value) ? value : "smooth";
           }),
         );
       });

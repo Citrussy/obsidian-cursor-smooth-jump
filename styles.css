@@ -1,6 +1,6 @@
 /* ==========================================================================
    Cursor Smooth Jump
-   Obsidian 1.14 draws the caret with the browser's native caret, which cannot
+   Obsidian draws the caret with the browser's native caret, which cannot
    be animated. This plugin hides that caret while it is active and paints its
    own absolutely-positioned caret inside `.cm-scroller`, so its transform can
    glide with a CSS transition on every selection change.
@@ -14,21 +14,37 @@ body {
 
 /* ---------- Native caret handling ---------- */
 
-/* Hide the native caret while our caret exists. `.cm-focused` is deliberately
-   not part of the selector: CodeMirror rewrites `.cm-editor`'s class list on
-   focus/theme updates, so fewer required classes means fewer ways to miss. */
+/* Hide the native caret while our caret exists. Two scopes on purpose:
+   `body.cj-on` covers the main window, `.cm-editor.cj-on` covers popout
+   windows, whose document has its own body. */
 body.cj-on .cm-editor.cj-caret-on .cm-content,
-body.cj-on .cm-editor.cj-caret-on .cm-line {
+body.cj-on .cm-editor.cj-caret-on .cm-line,
+.cm-editor.cj-on.cj-caret-on .cm-content,
+.cm-editor.cj-on.cj-caret-on .cm-line {
 	caret-color: transparent !important;
 }
 
 /* IME / composition needs the native caret back. */
 body.cj-on .cm-editor.cj-caret-on.cj-composing .cm-content,
-body.cj-on .cm-editor.cj-caret-on.cj-composing .cm-line {
+body.cj-on .cm-editor.cj-caret-on.cj-composing .cm-line,
+.cm-editor.cj-on.cj-caret-on.cj-composing .cm-content,
+.cm-editor.cj-on.cj-caret-on.cj-composing .cm-line {
 	caret-color: var(--caret-color, #dcddde) !important;
 }
 
-body.cj-on .cm-editor.cj-composing .cj-caret {
+body.cj-on .cm-editor.cj-composing .cj-caret,
+.cm-editor.cj-on.cj-composing .cj-caret {
+	display: none !important;
+}
+
+/* Obsidian runs its own drawSelection extension: the cursor layer paints a
+   1.2px `.cm-cursor` border at the head of every non-empty selection. That is
+   invisible while the browser caret is the caret, but with our caret running it
+   shows up as a second, thinner caret next to a dragged selection. Ours is the
+   only caret that should exist while it is painted (IME keeps the native caret
+   through the rule above). */
+body.cj-on .cm-editor.cj-caret-on .cm-cursor,
+.cm-editor.cj-on.cj-caret-on .cm-cursor {
 	display: none !important;
 }
 
